@@ -1,0 +1,124 @@
+---
+title: "P2"
+author: "Peter Omasta"
+date: "5/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(DeclareDesign)
+library(knitr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(dplyr)
+library(kableExtra)
+```
+
+#Intro
+I will be examining the number of farms under best practice in this section. This involves the creation of a storing scale that incorporates a series of questions that scale and rank the number of practices the farm does on a scale os 1 - 100. 
+
+## Target population 
+
+The target population for this survey would be the coffee bean farmers. For example in Ethiopia there are over 4 million smallholder farms, this survey would target a small sample population of those farmers in a given region. The sample population would be around 40,000 for the country of Ethiopia ( 1 in 100). 
+
+```{r}
+set.seed(42)
+#draw a sample population with a range of scores from 1:100
+population <- declare_population(
+  farms = add_level(N=4000000,
+                    score = sample(1:100, N, replace = TRUE),
+                    dist = draw_binary(N=N, prob = 0.6))
+) 
+
+#create the population data frame
+farm_pop <- population()
+
+#visually graph it
+farm_popgraph <- ggplot(farm_pop, aes(x=score)) + 
+  geom_histogram(color="black", fill="brown") +
+  labs( y = "Count",
+        x = "Best Practive Score",
+        title = "Target Population") +
+  theme_minimal()
+
+farm_popgraph
+```
+
+```{r}
+
+## 2) Drawing a Sample Code
+#drawing a sample
+e_sam <- sample(1:4000000,40000)
+
+#plotting the sample
+sample_plot <- ggplot(pop, aes(x=score)) + 
+  geom_histogram(color="black", fill="brown") +
+  geom_histogram(data=farm_pop[e_sam,], fill = "black") +
+   labs( y = "Count",
+        x = "Best Practive Score",
+        title = "Target Population") +
+  theme_minimal()
+
+sample_plot
+
+```
+
+
+##3) Challenges in drawing a representative sample 
+
+These farmers in a region like Ethiopia are going to be difficult to reach via a survey. There is unlikely to be a strong utility infrastructure for mailing a survey to these farmers. In a region of over 4 million farmers, a survey response of 40,000 (which would be 1 in 100) would be an ambitious target. But it would be reasonable to reach that target given these farmers do interact with local co-ops, distributers, and possibly local trade organizations. Sending the surveys to these entities would be more likely. armers closer to urban centers may have more access to these entitities than remote farmers thus we will say that farmers closer to an urban center are more likely to respond to the survey (80%) than those farther away (40%).
+
+
+```{r}
+##4) Declaration of Reporting Probabilities
+#code for reporting probability based upon distance
+reporting_prob <- declare_assignment(
+  blocks = dist,
+  assignment_variable = "Respond",
+  block_prob = c(0.4,0.8))
+
+#create data frame for reporting sample
+pop <- reporting_prob(farm_pop) %>% 
+  select(farms:Respond)
+
+
+```
+
+## 5) Description of Sampling Procedure
+
+As previously mentioned, it may be difficult to mail these surveys to individual farmers. What the group would instead do is send mailers to the trade organizations, distributers, and local regulators and have those entities distribute them among farmers. While this adds in an intermediary step for getting the necessary documents to the farmers, it does make things less complicated than trying to mail the surveys directly to the farmer. F
+
+```{r}
+## 6. Declaration of Sampling Procedure 
+
+sampling <- declare_sampling(n=40000)
+
+farm_estimate <- declare_estimands(mean(score),
+                                   label = "Mean Score")
+
+farm_answer <- declare_estimator(dist ~ 1,
+                            subset = (Respond == 1),
+                            model = lm_robust,
+                            label = "est.")
+
+farm_design <- population + reporting_prob + sampling + farm_estimate + farm_answer
+summary_design <- diagnose_design(farm_design) 
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
