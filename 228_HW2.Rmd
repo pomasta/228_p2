@@ -1,0 +1,83 @@
+---
+title: "ESM228_HW2"
+author: "Kelsie Fronheiser"
+date: "4/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("DeclareDesign")
+install.packages("kableExtra")
+```
+
+```{r}
+library(DeclareDesign)
+library(knitr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(dplyr)
+library(kableExtra)
+```
+Introduction: The goal of this measure (measure 5) is to determine the amount of knowledge gained on climate smart and water management best practices by each farmer that attended GAP and Rehabilitation training courses.
+
+1. Target population: The target population that we are considering for this measure is the population of farmers that attended the Farm College program training courses in East Africa from 2008-2016. The total number of farmers that completed training is 139,609 (Coffee Initiative) and we assumed that the total number of farmers that started but did not complete the program is 150,000. We are proposing that the knowledge the farmers gained from these courses be tested at the completion of the training courses on a 0-100 scale with 0 being no new knowledge learned and 100 being all learning outcomes achieved, with a score of 50 expected as the mean. For this analysis we assigned all farmers that gained over the mean amount of knowledge a 1 and all farmers that gained below the mean amount of knowledge a 0. 
+
+
+2. Declare population:
+```{r}
+# 2
+set.seed(300)
+population <- declare_population(
+farmers = add_level(N=150000,
+                    knowledge = rnorm(N, mean = 50, sd = 10),
+                    learned = ifelse(knowledge > median(knowledge), 1, 0)))
+
+
+pop <- population()
+
+
+```
+
+3. Challenges of drawing representative sample: The survey is administered at the end of the training courses. This creates a bias as farmers who started but did not complete the course do not take the survey. We assume that farmers that dropped out of the training courses did so because they were not achieving the learning outcomes laid out at the beginning of the training program. Therefore, the measure of knowledge learned by farmers at the training course only includes farmers that completed the entire course and consequently gained more knowledge than those farmers that did not complete the entirety of the courses. 
+
+4. Declare reporting probabilities:
+```{r}
+reporting <- declare_assignment(blocks = learned, 
+                                assignment_variable = "R",
+                                block_prob = c(0.86, 1))
+pop <- reporting(pop)
+
+
+mean(pop$knowledge)
+
+mean(pop[sam,"knowledge"])
+```
+
+5. Sampling procedure: The survey would be administered to all farmers (139,609) who completed the entirety of the Farm College training courses in East Africa from 2008 to 2016.
+
+6. Declare sampling procedure:
+```{r}
+sims <- 1000
+sample_size <- 139609
+pop_store <- rep(NA, sims)
+for (i in 1:sims) {
+  pop_store[i] <- mean(pop[sample(1:150000, sample_size),] %>% 
+                         filter(R == 1) %>%
+                         pull(knowledge))
+}
+  
+  sam.dist <- ggplot(data.frame(pop_store), aes(x = pop_store)) +
+  geom_histogram(color='black', fill='white') +
+  xlab('Mean value of sample (knowledge level out of 100)') +
+  geom_vline(xintercept = mean(pop$knowledge),linetype='dashed',color='blue')
+
+sam.dist
+```
+
