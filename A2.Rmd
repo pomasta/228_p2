@@ -1,5 +1,5 @@
 ---
-title: "P2"
+title: "Sampling Procedures"
 author: "Peter Omasta"
 date: "5/3/2020"
 output: html_document
@@ -17,14 +17,17 @@ library(dplyr)
 library(kableExtra)
 ```
 
-#Intro
+
+## **BEST PRACTICE SURVEYS**
+###Intro
 I will be examining the number of farms under best practice in this section. This involves the creation of a storing scale that incorporates a series of questions that scale and rank the number of practices the farm does on a scale os 1 - 100. 
 
-## Target population 
+### 1)Target population 
 
 The target population for this survey would be the coffee bean farmers. For example in Ethiopia there are over 4 million smallholder farms, this survey would target a small sample population of those farmers in a given region. The sample population would be around 40,000 for the country of Ethiopia ( 1 in 100). 
 
 ```{r}
+## 2) Target Population Code
 set.seed(42)
 #draw a sample population with a range of scores from 1:100
 population <- declare_population(
@@ -47,6 +50,7 @@ farm_popgraph <- ggplot(farm_pop, aes(x=score)) +
 farm_popgraph
 ```
 
+### 2) Drawing a Sample Code
 ```{r}
 
 ## 2) Drawing a Sample Code
@@ -67,13 +71,13 @@ sample_plot
 ```
 
 
-##3) Challenges in drawing a representative sample 
+### 3) Challenges in drawing a representative sample 
 
 These farmers in a region like Ethiopia are going to be difficult to reach via a survey. There is unlikely to be a strong utility infrastructure for mailing a survey to these farmers. In a region of over 4 million farmers, a survey response of 40,000 (which would be 1 in 100) would be an ambitious target. But it would be reasonable to reach that target given these farmers do interact with local co-ops, distributers, and possibly local trade organizations. Sending the surveys to these entities would be more likely. Farmers closer to urban centers may have more access to these entitities than remote farmers thus we will say that farmers closer to an urban center are more likely to respond to the survey (80%) than those farther away (40%).
 
-
+### 4) Declaration of Reporting Probabilities
 ```{r}
-##4) Declaration of Reporting Probabilities
+## 4) Declaration of Reporting Probabilities
 #code for reporting probability based upon distance
 reporting_prob <- declare_assignment(
   blocks = dist,
@@ -87,12 +91,13 @@ pop <- reporting_prob(farm_pop) %>%
 
 ```
 
-## 5) Description of Sampling Procedure
+### 5) Description of Sampling Procedure
 
 As previously mentioned, it may be difficult to mail these surveys to individual farmers. What the group would instead do is send mailers to the trade organizations, distributers, and local regulators and have those entities distribute them among farmers. While this adds in an intermediary step for getting the necessary documents to the farmers, it does make things less complicated than trying to mail the surveys directly to the farmer. F
 
+### 6) Declaration of Sampling Procedure 
 ```{r}
-## 6. Declaration of Sampling Procedure 
+## 6) Declaration of Sampling Procedure 
 
 sampling <- declare_sampling(n=4000)
 
@@ -110,6 +115,68 @@ summary_design <- diagnose_design(farm_design)
 summary_design$diagnosands_df[,c(5,11,13,15)] %>% 
   kable()
 
+```
+
+## **Climate Smart Water Programs** 
+
+Introduction: The goal of this measure (measure 5) is to determine the amount of knowledge gained on climate smart and water management best practices by each farmer that attended GAP and Rehabilitation training courses.
+
+## 1) Target population: 
+
+The target population that we are considering for this measure is the population of farmers that attended the Farm College program training courses in East Africa from 2008-2016. The total number of farmers that completed training is 139,609 (Coffee Initiative) and we assumed that the total number of farmers that started but did not complete the program is 150,000. We are proposing that the knowledge the farmers gained from these courses be tested at the completion of the training courses on a 0-100 scale with 0 being no new knowledge learned and 100 being all learning outcomes achieved, with a score of 50 expected as the mean. For this analysis we assigned all farmers that gained over the mean amount of knowledge a 1 and all farmers that gained below the mean amount of knowledge a 0. 
+
+
+## 2) Declare population:
+```{r}
+# 2
+set.seed(300)
+population <- declare_population(
+farmers = add_level(N=150000,
+                    knowledge = rnorm(N, mean = 50, sd = 10),
+                    learned = ifelse(knowledge > median(knowledge), 1, 0)))
+
+
+pop <- population()
+
+
+```
+
+## 3) Challenges of drawing representative sample: 
+
+The survey is administered at the end of the training courses. This creates a bias as farmers who started but did not complete the course do not take the survey. We assume that farmers that dropped out of the training courses did so because they were not achieving the learning outcomes laid out at the beginning of the training program. Therefore, the measure of knowledge learned by farmers at the training course only includes farmers that completed the entire course and consequently gained more knowledge than those farmers that did not complete the entirety of the courses. 
+
+## 4) Declare reporting probabilities:
+```{r}
+reporting <- declare_assignment(blocks = learned, 
+                                assignment_variable = "R",
+                                block_prob = c(0.86, 1))
+pop <- reporting(pop)
+
+
+mean(pop$knowledge)
+
+mean(pop[sam,"knowledge"])
+```
+
+## 5) Sampling procedure: The survey would be administered to all farmers (139,609) who completed the entirety of the Farm College training courses in East Africa from 2008 to 2016.
+
+## 6) Declare sampling procedure:
+```{r}
+sims <- 1000
+sample_size <- 139609
+pop_store <- rep(NA, sims)
+for (i in 1:sims) {
+  pop_store[i] <- mean(pop[sample(1:150000, sample_size),] %>% 
+                         filter(R == 1) %>%
+                         pull(knowledge))
+}
+  
+  sam.dist <- ggplot(data.frame(pop_store), aes(x = pop_store)) +
+  geom_histogram(color='black', fill='white') +
+  xlab('Mean value of sample (knowledge level out of 100)') +
+  geom_vline(xintercept = mean(pop$knowledge),linetype='dashed',color='blue')
+
+sam.dist
 ```
 
 
